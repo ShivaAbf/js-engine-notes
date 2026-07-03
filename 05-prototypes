@@ -1,0 +1,355 @@
+# JavaScript Handbook (YDKJS) – Chapters 2 & 3
+
+> Personal handbook built from my study sessions. Designed for **memory refresh**, not first learning.
+
+---
+
+# Chapter 2 — Prototypes
+
+## The One Idea
+
+**JavaScript does NOT copy behavior between objects.**
+
+It **shares** behavior through links.
+
+```
+myObj
+  │
+  ▼
+User.prototype
+  │
+  ▼
+Object.prototype
+  │
+  ▼
+null
+```
+
+When JS cannot find a property:
+
+1. Check the object.
+2. Check its prototype.
+3. Continue upward.
+4. Reach `Object.prototype`.
+5. Reach `null`.
+6. Return `undefined`.
+
+> Memory sentence:
+> **JS walks. It never copies.**
+
+---
+
+## prototype vs [[Prototype]]
+
+These are different.
+
+`User.prototype`
+- A normal object.
+- Used when creating instances.
+
+`instance.[[Prototype]]`
+- The hidden link to another object.
+
+```
+instance.[[Prototype]] === User.prototype
+```
+
+---
+
+## Interview trap
+
+Methods are **not** copied into every object.
+
+```
+Object.hasOwn(user,"login") // false
+Object.hasOwn(User.prototype,"login") // true
+```
+
+Reason:
+- lower memory
+- shared behavior
+- inheritance
+
+---
+
+# Chapter 3 — Classes
+
+## Biggest truth
+
+`class` is mostly prettier syntax.
+
+Under the hood:
+
+```
+class
+      ↓
+prototype system
+```
+
+---
+
+## Constructor
+
+Runs only with `new`.
+
+```
+new User("Shiva")
+        ↓
+constructor()
+```
+
+---
+
+## Where everything lives
+
+| Thing | Lives |
+|------|------|
+| Fields | Instance |
+| Methods | Prototype |
+| Static | Constructor |
+| Private | Declaring class only |
+
+Memorize this table.
+
+---
+
+## this
+
+Inside instance methods:
+
+```
+this === current instance
+```
+
+Inside static methods:
+
+```
+this === constructor/class
+```
+
+---
+
+## Public fields
+
+```
+class User{
+    name=""
+}
+```
+
+Mental model:
+
+```
+constructor(){
+    this.name=""
+}
+```
+
+---
+
+## Arrow functions inside class
+
+Avoid:
+
+```
+login = ()=>{}
+```
+
+Why?
+
+Every instance creates a brand new function.
+
+Prefer:
+
+```
+login(){}
+```
+
+One function.
+Shared through prototype.
+
+---
+
+## extends
+
+Creates relationships.
+
+Not copies.
+
+```
+Admin
+   │
+   ▼
+User
+```
+
+---
+
+## super
+
+Constructor:
+
+```
+super(...)
+```
+
+Must happen before `this`.
+
+Methods:
+
+```
+super.login()
+```
+
+Runs parent implementation.
+
+---
+
+## Overriding
+
+Child can replace parent behavior.
+
+Use:
+
+```
+super.method()
+```
+
+when parent behavior is still needed.
+
+---
+
+## instanceof
+
+Checks the prototype chain.
+
+```
+admin instanceof User
+```
+
+True because User.prototype exists in the chain.
+
+---
+
+## Sharing, not Copying
+
+The most important sentence from the whole chapter.
+
+Methods stay exactly where they were created.
+
+Instances borrow them.
+
+They never receive copies.
+
+---
+
+## Static
+
+Static belongs to the class.
+
+```
+User.company
+```
+
+Not:
+
+```
+user.company
+```
+
+Think:
+
+Company belongs to the organization.
+
+Name belongs to the employee.
+
+---
+
+## Private
+
+```
+#password
+```
+
+Only code written inside that declaring class can access it.
+
+Even subclasses cannot.
+
+---
+
+## Brand check
+
+```
+#password in obj
+```
+
+Safe boolean check.
+
+No exception.
+
+---
+
+## Private static gotcha
+
+Inside inherited static methods:
+
+Prefer
+
+```
+User.#count
+```
+
+instead of
+
+```
+this.#count
+```
+
+---
+
+# Mental Models
+
+### Prototype
+A family tree.
+
+### Instance
+A person.
+
+### Prototype
+The shared DNA.
+
+### Static
+The company's information.
+
+### Instance
+The employee's information.
+
+### Private
+A safe whose key only one class owns.
+
+---
+
+# Interview Questions
+
+1. Difference between prototype and [[Prototype]]?
+2. Why are methods on the prototype?
+3. Why is JS inheritance sharing instead of copying?
+4. Difference between static and instance?
+5. Why are arrow-function fields discouraged?
+6. Difference between super() and super.method()?
+7. Why does instanceof return true for parent classes?
+8. Why can't subclasses access #private?
+9. Where are static methods stored?
+10. What really happens when using class?
+
+---
+
+# Five Rules
+
+1. JS walks prototype chains.
+2. Methods belong on prototypes.
+3. class is built on prototypes.
+4. static belongs to constructors.
+5. Inheritance means sharing.
+
+If I forget everything else, remembering these five rules lets me rebuild the rest.
