@@ -1,0 +1,878 @@
+# JavaScript Async Programming Notes (Callbacks → Promises → Async/Await)
+
+---
+
+# 1. Asynchronous JavaScript
+
+JavaScript is **single-threaded**.
+
+When an asynchronous operation starts (network request, timer, file, etc.), JavaScript **does not wait**.
+
+Instead:
+
+- Browser/Node starts the operation.
+- JavaScript continues executing other code.
+- When the operation finishes, its continuation is scheduled.
+
+Nothing blocks.
+
+---
+
+# 2. Callback
+
+A callback is simply:
+
+> A function passed into another function to be executed later.
+
+Example:
+
+```js
+loadScript("script.js", () => {
+    console.log("Loaded");
+});
+```
+
+The callback runs **after** the asynchronous work finishes.
+
+---
+
+# 3. Callback Hell
+
+Nested callbacks create unreadable code.
+
+```js
+loadScript("1.js", () => {
+    loadScript("2.js", () => {
+        loadScript("3.js", () => {
+            ...
+        });
+    });
+});
+```
+
+Problems
+
+- Deep nesting
+- Hard error handling
+- Difficult maintenance
+- Impossible to scale
+
+Also called:
+
+- Callback Hell
+- Pyramid of Doom
+
+---
+
+# 4. Promise
+
+Promise is **NOT the asynchronous task.**
+
+Promise is an object that represents the future result of an asynchronous task.
+
+Think:
+
+```
+
+Async Task <----> Promise <----> Consumer
+
+```
+
+The Promise connects producer and consumer.
+
+---
+
+# Promise States
+
+Initially
+
+```
+pending
+```
+
+After success
+
+```
+fulfilled
+```
+
+After failure
+
+```
+rejected
+```
+
+Once settled:
+
+- State never changes again.
+- Extra resolve/reject calls are ignored.
+
+---
+
+# Promise Constructor
+
+```js
+const promise = new Promise((resolve, reject) => {
+
+});
+```
+
+The executor runs **immediately**.
+
+Not later.
+
+Immediately.
+
+---
+
+# resolve vs reject
+
+Success
+
+```js
+resolve(value)
+```
+
+Failure
+
+```js
+reject(error)
+```
+
+Convention:
+
+Always reject with Error objects.
+
+```js
+reject(new Error("Something failed"))
+```
+
+---
+
+# Promise Consumption
+
+## then()
+
+```js
+promise.then(successHandler)
+```
+
+or
+
+```js
+promise.then(successHandler, errorHandler)
+```
+
+---
+
+## catch()
+
+Equivalent to
+
+```js
+promise.then(null, errorHandler)
+```
+
+Just cleaner.
+
+---
+
+## finally()
+
+Runs regardless of success or failure.
+
+Perfect for:
+
+- cleanup
+- hiding loading indicators
+- closing connections
+
+Important:
+
+finally()
+
+- receives no arguments
+- doesn't modify the result
+- passes the value/error through
+
+---
+
+# Promise Chaining
+
+Every `.then()` returns **a brand new Promise.**
+
+```
+P1
+ |
+then
+ |
+P2
+ |
+then
+ |
+P3
+```
+
+This is NOT multiple handlers on the same promise.
+
+Each `.then()` creates another Promise.
+
+---
+
+## Multiple .then()
+
+Different.
+
+```js
+promise.then(...)
+promise.then(...)
+promise.then(...)
+```
+
+All handlers subscribe to the SAME Promise.
+
+No chaining.
+
+```
+        Promise
+
+      /   |   \
+
+ then then then
+```
+
+---
+
+Interview Trap
+
+People confuse
+
+```js
+.then().then()
+```
+
+with
+
+```js
+.then()
+.then()
+.then()
+```
+
+Those are completely different.
+
+---
+
+# Error Propagation
+
+Errors automatically travel down the chain.
+
+```
+Promise
+
+↓
+
+then
+
+↓
+
+then
+
+↓
+
+catch
+```
+
+Any error jumps directly to the nearest catch.
+
+---
+
+# Invisible try...catch
+
+Promise executors automatically have
+
+```
+try {
+
+}
+catch {
+
+}
+```
+
+around them.
+
+Meaning:
+
+```js
+throw new Error()
+```
+
+is equivalent to
+
+```js
+reject(error)
+```
+
+Also true inside .then handlers.
+
+---
+
+# Rethrowing
+
+Inside catch:
+
+Handled?
+
+Continue normally.
+
+```js
+catch(err){
+
+}
+```
+
+Can't handle?
+
+```js
+throw err;
+```
+
+The next catch receives it.
+
+Exactly like normal try...catch.
+
+---
+
+# Promise APIs
+
+---
+
+## Promise.all()
+
+Wait for ALL.
+
+Returns
+
+```
+[value1,value2,value3]
+```
+
+Fails immediately if one fails.
+
+Use when every result matters.
+
+---
+
+## Promise.allSettled()
+
+Never fails.
+
+Returns status of every promise.
+
+```
+fulfilled
+
+rejected
+```
+
+Useful for dashboards, batch operations.
+
+---
+
+## Promise.race()
+
+Returns the FIRST settled promise.
+
+Success OR failure.
+
+---
+
+## Promise.any()
+
+Returns first SUCCESS.
+
+Ignores failures.
+
+Fails only if every promise rejects.
+
+---
+
+# Promisification
+
+Definition:
+
+Convert a callback-based function into a Promise-based function.
+
+Old API
+
+```js
+loadScript(src, callback)
+```
+
+New API
+
+```js
+loadScriptPromise(src)
+```
+
+Important idea
+
+We DO NOT rewrite the original function.
+
+Instead we wrap it.
+
+```
+Old Callback API
+
+↓
+
+Wrapper
+
+↓
+
+Promise API
+```
+
+The wrapper is simply a translator.
+
+```
+callback(err,result)
+
+↓
+
+reject(err)
+
+↓
+
+resolve(result)
+```
+
+---
+
+Why not
+
+```js
+loadScript(src, resolve)
+```
+
+Because callback signature is
+
+```js
+callback(err,result)
+```
+
+while resolve expects
+
+```js
+resolve(value)
+```
+
+Different signatures.
+
+The wrapper translates between them.
+
+---
+
+Promisify only works correctly if callback executes ONCE.
+
+Promise can settle only once.
+
+---
+
+# Microtask Queue
+
+Most important rule
+
+Promise handlers NEVER execute immediately.
+
+Never.
+
+Even
+
+```js
+Promise.resolve(...)
+```
+
+still queues its handler.
+
+Example
+
+```js
+console.log("A");
+
+Promise.resolve().then(() => console.log("B"));
+
+console.log("C");
+```
+
+Output
+
+```
+A
+C
+B
+```
+
+Reason
+
+```
+Call Stack
+
+↓
+
+Microtask Queue
+```
+
+Execution order
+
+1. Finish current stack.
+2. Empty microtask queue.
+
+---
+
+Rule to Memorize
+
+JavaScript NEVER interrupts the current Call Stack.
+
+Only when Call Stack becomes empty
+
+↓
+
+Microtasks execute.
+
+---
+
+FIFO
+
+Microtasks execute
+
+First In
+
+↓
+
+First Out
+
+---
+
+# Async / Await
+
+Async/await is syntax sugar over Promises.
+
+It adds NO new asynchronous capability.
+
+Everything still uses Promises underneath.
+
+---
+
+# async
+
+```js
+async function f(){
+
+}
+```
+
+Always returns a Promise.
+
+Even
+
+```js
+return 5;
+```
+
+becomes
+
+```js
+Promise.resolve(5)
+```
+
+---
+
+Equivalent
+
+```js
+async function f(){
+
+return 5;
+
+}
+```
+
+≈
+
+```js
+function f(){
+
+return Promise.resolve(5);
+
+}
+```
+
+---
+
+# await
+
+```js
+const value = await promise;
+```
+
+Pauses ONLY the async function.
+
+Not JavaScript.
+
+Huge difference.
+
+---
+
+Mental Model
+
+```
+await
+
+↓
+
+Pause async function
+
+↓
+
+Return control to JavaScript
+
+↓
+
+Promise settles
+
+↓
+
+Resume from exactly here
+```
+
+---
+
+Interview Trap
+
+await DOES NOT block JavaScript.
+
+While awaiting
+
+- clicks work
+- animations work
+- rendering works
+- timers continue
+- network continues
+
+Only the async function pauses.
+
+---
+
+Example
+
+```js
+async function test(){
+
+await Promise.resolve();
+
+console.log("A");
+
+}
+
+test();
+
+console.log("B");
+```
+
+Output
+
+```
+B
+A
+```
+
+---
+
+Multiple awaits
+
+Every await creates another continuation.
+
+```js
+await ...
+
+↓
+
+resume
+
+↓
+
+await ...
+
+↓
+
+resume
+```
+
+Each continuation is another microtask.
+
+---
+
+Error Handling
+
+Use
+
+```js
+try{
+
+}
+catch{
+
+}
+```
+
+instead of
+
+```js
+.then().catch()
+```
+
+Equivalent behavior.
+
+Rejected Promise
+
+↓
+
+await throws
+
+↓
+
+try...catch catches.
+
+---
+
+Without try...catch
+
+The async function itself becomes a rejected Promise.
+
+```js
+f().catch(...)
+```
+
+---
+
+# Promise.all with await
+
+Excellent pattern
+
+```js
+const [a,b,c] = await Promise.all([
+    fetchA(),
+    fetchB(),
+    fetchC()
+]);
+```
+
+Runs concurrently.
+
+Not sequentially.
+
+Huge performance improvement.
+
+---
+
+# Common Interview Questions
+
+Q:
+Does async make code synchronous?
+
+Answer:
+No.
+
+It only makes asynchronous code LOOK synchronous.
+
+---
+
+Q:
+Does await block JavaScript?
+
+Answer:
+No.
+
+Only pauses the current async function.
+
+---
+
+Q:
+Does async create threads?
+
+Answer:
+No.
+
+JavaScript remains single-threaded.
+
+---
+
+Q:
+Does await skip the Microtask Queue?
+
+Answer:
+No.
+
+Continuation always enters the Microtask Queue.
+
+---
+
+Q:
+Difference between
+
+```js
+.then().then()
+```
+
+and
+
+```js
+.then()
+.then()
+.then()
+```
+
+First:
+
+Promise chain.
+
+Second:
+
+Multiple subscribers.
+
+---
+
+Q:
+Promise vs Async/Await
+
+Async/Await is just cleaner syntax.
+
+Everything still uses Promises.
+
+---
+
+# Senior Mental Model
+
+Think in this order:
+
+```
+Call Stack
+
+↓
+
+Browser APIs
+
+↓
+
+Microtask Queue (Promises / await)
+
+↓
+
+Macrotask Queue (Timers, Events...)
+```
+
+If this model is clear,
+
+Promises, async/await, Event Loop and browser behavior become much easier to reason about.
